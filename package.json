@@ -1,8 +1,8 @@
 {
-  "name": "docker-nginx-express",
+  "name": "accountability",
   "version": "1.0.0",
-  "description": "A playground for Docker with Nginx and Express.",
-  "author": "Roberto Achar <robertoachar@gmail.com>",
+  "description": "Docker with Nginx and Express.",
+  "author": "Lorenzo <lollo.diaspro@gmail.com>",
   "homepage": "https://github.com/robertoachar/docker-nginx-express#readme",
   "keywords": [
     "docker",
@@ -30,13 +30,19 @@
     "url": "https://github.com/robertoachar/docker-nginx-express/issues"
   },
   "dependencies": {
-    "express": "4.16.2",
-    "pug": "2.0.0-rc.4",
+    "cookie-parser": "1.4.6",
+    "dotenv": "16.3.1",
+    "ejs": "3.1.9",
+    "express": "4.18.2",
+    "jsonwebtoken": "9.0.1",
+    "nano": "10.1.2",
+    "node-fetch": "3.3.2",
+    "pug": "3.0.2",
     "winston": "2.4.0"
   },
   "devDependencies": {
-    "eslint": "4.10.0",
-    "nodemon": "1.12.1"
+    "eslint": "8.45.0",
+    "nodemon": "3.0.1"
   },
   "private": true,
   "license": "MIT"

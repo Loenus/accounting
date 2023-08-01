@@ -10,6 +10,7 @@ services:
       - node1:node1
       - node2:node2
       - node3:node3
+      - python:python
     depends_on:
       - node1
       - node2
@@ -23,44 +24,108 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    links:
+      - python:python
     working_dir: /usr/src/app
     volumes:
-      - .:/usr/src/app
+      - ./node_modules:/usr/src/app/node_modules
+      - ./src:/usr/src/app/main
+      - ./beancount:/usr/src/app/beancount_data:ro
     ports:
       - "3000"
     environment:
       - INSTANCE=node1
+      - COUCHDB_USER=${DB_USER}
+      - COUCHDB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - app-network
+      - beancount-network
 
   node2:
     build:
       context: .
       dockerfile: Dockerfile
+    links:
+      - python:python
     working_dir: /usr/src/app
     volumes:
-      - .:/usr/src/app
+      - ./node_modules:/usr/src/app/node_modules
+      - ./src:/usr/src/app/main
+      - ./beancount:/usr/src/app/beancount_data:ro
     ports:
       - "3000"
     environment:
       - INSTANCE=node2
+      - COUCHDB_USER=${DB_USER}
+      - COUCHDB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - app-network
+      - beancount-network
 
   node3:
     build:
       context: .
       dockerfile: Dockerfile
+    links:
+      - python:python
     working_dir: /usr/src/app
     volumes:
-      - .:/usr/src/app
+      - ./node_modules:/usr/src/app/node_modules
+      - ./src:/usr/src/app/main
+      - ./beancount:/usr/src/app/beancount_data:ro
     ports:
       - "3000"
     environment:
       - INSTANCE=node3
+      - COUCHDB_USER=${DB_USER}
+      - COUCHDB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - app-network
+      - beancount-network
+
+  python:
+    build:
+      context: .
+      dockerfile: .docker/python/Dockerfile
+    tty: true  # Enable pseudo-TTY (per vedere logs nella console)
+    working_dir: /app
+    volumes:
+      - ./python:/app/src
+      - ./beancount:/app/beancount_data:rw
+    ports:
+      - "3003"
+    networks:
+      - beancount-network
+    
+  couchdb:
+    build:
+      context: .
+      dockerfile: .docker/couchdb/Dockerfile
+    restart: always
+    volumes:
+      - ./db_data:/opt/couchdb/data:rw
+    ports:
+      - "5984:5984"
+    environment:
+      - INSTANCE=couchdb
+      - COUCHDB_SERVER=http://couchdb:5984/
+      - COUCHDB_USER=${DB_USER}
+      - COUCHDB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - app-network
+
 
 networks:
   app-network:
     driver: bridge
+  beancount-network:
+    driver: bridge
+
+volumes:
+  beancount:
+    external: true # use a pre-existing external data volume
+  db_data:
+    external: true

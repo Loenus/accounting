@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h2> <%=environment.title%> </h2>
+    <% if(environment.report ==null ){ %>
+        <p>ma nche senso...</p>
+    <% } else { %>
+    <div style="white-space: pre;"><%=environment.report%> </div>
+    <% } %>
+
+    <dialog id="the">
+        <form method="post" action="/aggiungi">
+            <label for="amount">Amount:</label>
+            <input type="number" id="amount" name="amount" value="10"><br><br>
+            <label for="data">Data:</label>
+            <input type="date" id="data" name="data" placeholder="data di oggi"><br><br>
+            <label for="descr">Descrizione:</label>
+            <input type="text" id="descr" name="descr" value="Amazon"><br><br>
+            <label for="categoria">Categoria:</label>
+            <input type="text" id="categoria" name="categoria" value="Expenses:Shopping"><br><br>
+            <input type="submit" value="Submit">
+        </form>
+        <br>
+        <button onclick="the.close()">chiudimi</button>
+    </dialog>
+    <button onclick="the.showModal()">Aggiungi Transazione</button>
+
+    <br><br>
+    <a class="nav-link" href="/" id="landingPage">landingPage</a>
+    <a class="nav-link" href="/crea" id="landingPage">CREA</a>
+    <a href="/logOut" class="button">LOG OUT</a>
+    <br><br>
+    <form method="post" action="/users/delete">
+        <input type="submit" value="Elimina account '<%= environment.user %>'"/>
+    </form>
+    <br>
+    <form method="post" action="/users/changePass">
+        <label for="newPass">Nuova Password:</label>
+        <input type="text" id="newPass" name="newPass">
+        <input type="submit" value="Cambia Password di '<%= environment.user %>'"/>
+    </form>    
+</body>
+<script>
+    window.onload = function(e) {
+        document.getElementById('data').valueAsDate = new Date();
+    }
+</script>
+</html>

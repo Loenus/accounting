@@ -1,0 +1,4 @@
+flask
+beancount
+watchdog[watchmedo]
+waitress
