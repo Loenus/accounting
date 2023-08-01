@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from enum import StrEnum
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -6,16 +7,24 @@ import os
 env = os.environ.get('FLASK_ENV')
 
 # https://github.com/hoostus/beancount-ynab/blob/master/import.py
+# https://snyk.io/advisor/python/beancount/functions/beancount.loader.load_file
 from beancount.core.data import Transaction, Posting
 from beancount.core.amount import Amount
 from beancount.core.number import Decimal
 from beancount.core import data
-import beancount.loader
+from beancount import loader
+from beancount.parser import printer
 
 file_path_beancount_test = "/app/beancount_data/test.beancount"
+file_path_dir = "/app/beancount_data/"
 print('SONO VIVO')
 
 app = Flask(__name__)
+
+class Flags(StrEnum):
+  FLAG_OKAY = "*" # Completed transaction, known amounts, “this looks correct.”
+  FLAG_NOT_OK = "!" # Incomplete transaction, needs confirmation or revision, “this looks incorrect.”
+
 
 # https://stackoverflow.com/questions/49355010/how-do-i-watch-python-source-code-files-and-restart-when-i-save
 # EXAMPLE
@@ -47,53 +56,53 @@ def provaaa():
 
 @app.post("/prova")
 def prova():
-    logging.info("test")
-    logging.info("la richiesta è un json")
-    request_payload = request.get_json()
-    logging.info("ho preso il payload")
-    logging.info(str(request_payload))
-    date = request_payload['data']
-    payee = request_payload['descr']
-    account = request_payload['categoria']
-    amount = Decimal(request_payload['amount'])
-    logging.info('Amount: ' + str(amount))
+  if not request.is_json:
+    return jsonify({"msg": "Missing JSON in request"}), 400
+  request_payload = request.get_json()
+  logging.info('Data from request received: ' + str(request_payload))
 
-    #date = "2023-07-27"
-    #payee = "Amazon"
-    #account = "Expenses:Shopping"
-    #amount = Decimal("20.00")
-    narration="Acquisto su Amazon"
-    currency = "USD"
+  date = request_payload['data']
+  payee = request_payload['descr']
+  account = request_payload['categoria']
+  narration = request_payload['narration']
+  amount = Decimal(request_payload['amount'])
+  currency = "USD"
+  transaction = Transaction(
+    meta=data.new_metadata("transaction::123456789", lineno=1),  # Inserisci un valore univoco come ID della transazione
+    flag=Flags.FLAG_OKAY,
+    date=date,
+    payee=payee,
+    narration=narration,
+    tags=set(),
+    links=set(),
+    postings=[
+        Posting(account, Amount(amount, currency), None, None, None, None),
+        Posting("Assets:Bank", None, None, None, None, None),
+    ],
+  )
 
-    transaction = Transaction(
-        meta=data.new_metadata("transaction::123456789", lineno=1),  # Inserisci un valore univoco come ID della transazione
-        flag=None,  # Puoi specificare una stringa come flag se necessario
-        date=date,
-        payee=payee,
-        narration=narration,
-        tags=set(),
-        links=set(),
-        postings=[
-            Posting(account, Amount(amount, currency), None, None, None, None),
-            Posting("Assets:Bank", None, None, None, None, None),
-        ],
-    )
+  filename = f"{file_path_dir}{request_payload['user']}.beancount"
+  logging.info('File da modificare: ' + filename)
+  with open(filename, 'a') as file:
+    file.write(printer.format_entry(transaction) + '\n')
 
-    entries = [transaction]
-    transaction_str = "{} * \"{}\" \"{}\"\n  {} {}\n  Assets:Bank\n\n".format(
-        date, payee, transaction.narration, account, Amount(amount, currency)
-    )
-    transss = f"{date} * \"{payee}\" \"{transaction.narration}\"\n  {account} {Amount(amount, currency)}\n  Assets:Bank\n\n"
-    
-
-    with open("/app/beancount_data/test.beancount", "a") as f:
-        f.write(transaction_str)
-
-    response_data = {
-            'message': 'Transaction processed and saved successfully.',
-            'transaction_str': transaction_str
-        }
-    return jsonify(response_data), 201
+  transaction_dict = {
+  "meta": transaction.meta,
+  "date": transaction.date,
+  "payee": transaction.payee,
+  "narration": transaction.narration,
+  "postings": [
+      {
+        "account": posting.account,
+        "units": {
+          "amount": posting.units,
+          "currency": 'USD',
+        },
+      }
+      for posting in transaction.postings
+    ],
+  }
+  return jsonify(transaction_dict), 201
 
 
 # NON FUNZIONA
@@ -161,9 +170,8 @@ def crealo():
     request_payload = request.get_json()
     username = request_payload['user']
     logging.info('utente per cui creare il file: ' + username)
-    user_file_path = f"/app/beancount_data/{username}.txt"
-    with open(user_file_path, 'w') as file:
-        file.write('ho creatooooo')
+    user_file_path = f"/app/beancount_data/{username}.beancount"
+    open(user_file_path, 'w').close()
     os.chmod(user_file_path, 0o600)
     print("File utente creato e autorizzazioni impostate.")
     check_file_permissions(user_file_path)

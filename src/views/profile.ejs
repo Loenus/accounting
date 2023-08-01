@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h2>utente: <%=user%></h2>
+
+  <br>
+  <a href="/test" class="button">Pagina Test</a>
+  <form method="post" action="/users/changePass">
+    <label for="newPass">Nuova Password:</label>
+    <input type="text" id="newPass" name="newPass">
+    <input type="submit" value="Cambia Password di '<%= user %>'"/>
+  </form>
+  <br>
+  <form method="post" action="/users/delete">
+    <input type="submit" value="Elimina account '<%= user %>'"/>
+  </form>
+  <br>
+  <a class="nav-link" href="/" id="landingPage">landingPage</a>
+  <br>
+  <a href="/logOut" class="button">LOG OUT</a>
+</body>
+</html>

@@ -21,6 +21,13 @@ const { cookieJwtAuth } = require("./routes/cookieJwtAuth");
 const userRoutes = require('./routes/users')(couch);
 const beancountRoutes = require('./routes/beancount');
 
+// https://sematext.com/blog/docker-container-monitoring/
+// https://sematext.com/guides/elk-stack/
+
+// https://www.openbankingtracker.com/provider/intesa-sanpaolo
+// Codat? TrueLayer? in cosa sono diversi da Plaid e Salt Edge (e nordigen?) ?
+
+
 app.get('/', (req, res) => {
   res.render('landingPage');
 });
@@ -34,17 +41,24 @@ app.get('/logOut', (req, res) => {
   res.clearCookie("token");
   res.redirect("/login");
 })
+app.get('/profile', cookieJwtAuth, (req, res) => {
+  res.render('profile', {user: req.user['name']});
+})
 
 app.use('/users', userRoutes);
 app.use('/beancount', beancountRoutes);
 
-// TODO: sistemare "aggiungi" transizione, con una completa 
+// TODO: sistemare "aggiungi" transizione, con una completa
 // TODO: associare un documento creato alla visualizzazione della rendicontazione in test
 
 app.post('/aggiungi', cookieJwtAuth, (req, resOut) => {
-  console.log(req.body);
-  //const amount = req.body.amount;
+  req.body.user = req.user['name'];
   const jsonData = JSON.stringify(req.body);
+  /*const jsonData = JSON.stringify({ //merge two json
+    ...req.body,
+    ...req.user
+  });*/
+  console.log('Data to Python: ' + jsonData)
 
   // comunicazione con il container python
   const options = {
@@ -55,8 +69,8 @@ app.post('/aggiungi', cookieJwtAuth, (req, resOut) => {
     headers: {
       "Content-type": "application/json",
     },
-  };  
-  console.log("options: " + JSON.stringify(options))
+  };
+  console.log("Call for Python: " + JSON.stringify(options))
   const reqPython = http.request(options, (res) => {
     let data = [];
     const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
@@ -72,7 +86,7 @@ app.post('/aggiungi', cookieJwtAuth, (req, resOut) => {
     res.on('end', () => {
       console.log("Response Stringa: " + data.toString());
       //console.log("Response array di oggetti (json parse): " + JSON.parse(data)[0].name);
-      
+
       //response to the request:
       //resOut.status(res.statusCode).send(data.toString());
       resOut.redirect('/test')
@@ -98,7 +112,7 @@ app.get('/crea', cookieJwtAuth, async (req, res) => {
       res.redirect('/test')
     } else {
       console.log('File not found. Calling Python to create it.');
-      const jsonData = JSON.stringify({"user": username}); 
+      const jsonData = JSON.stringify({"user": username});
       const options = {
         hostname: 'python',
         port: 3003,
@@ -107,7 +121,7 @@ app.get('/crea', cookieJwtAuth, async (req, res) => {
         headers: {
           "Content-type": "application/json",
         },
-      }; 
+      };
       const reqPython = http.request(options, (innerRes) => {
         let data = [];
         const headerDate = innerRes.headers && innerRes.headers.date ? innerRes.headers.date : 'no response date';
@@ -134,39 +148,43 @@ app.get('/test', cookieJwtAuth, async (req, res) => {
   //let doc = await couch.session()
   //console.log('utente è autenticato?? ' + JSON.stringify(doc))
   //console.log('cookies: ' + JSON.stringify(req.cookies.session))
-  
+
   const environment = {
     title: 'Docker with Nginx and Express',
     node: process.env.NODE_ENV,
     instance: process.env.INSTANCE,
     port: process.env.PORT,
     user: req.user.name,
-    report: null,
-    asd: null
+    report: null
   };
+
+  const filePath = `/usr/src/app/beancount_data/${req.user['name']}.beancount`;
+  const fileExists = fs.existsSync(filePath);
 
   fs.readFile('/usr/src/app/beancount_data/test1.txt', 'utf8', (err, inputD) => {
     if (err) { console.error(err); throw err; }
     console.log('Leggo: ' + inputD.toString());
     environment.title = inputD;
-    
-    const command = 'bean-report /usr/src/app/beancount_data/test.beancount balances';
-    /*execSync(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Errore durante esecuzione di Beancount: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        console.error(`Errore da Beancount: ${stderr}`);
-      }
-      //console.log(`Output Beancount: \n${stdout}`);
-      console.log('Output: ' + stdout.toString());
-      environment.report = stdout;
-      console.log('secondo testtttt: ' + environment.report)
-    })*/
-    let eee = execSync(command);
-    console.log('secondo testtttt: ' + eee); //JSON.stringify(eee)
-    environment.report = eee;
+
+    if (fileExists) {
+      const command = `bean-report ${filePath} balances`;
+      /*execSync(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Errore durante esecuzione di Beancount: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.error(`Errore da Beancount: ${stderr}`);
+        }
+        //console.log(`Output Beancount: \n${stdout}`);
+        console.log('Output: ' + stdout.toString());
+        environment.report = stdout;
+        console.log('secondo testtttt: ' + environment.report)
+      })*/
+      let eee = execSync(command);
+      console.log('Report: ' + eee); //JSON.stringify(eee)
+      environment.report = eee;
+    }
 
     res.render('test', { environment });
   })
@@ -194,7 +212,7 @@ app.get('/duplicati', (req, res) => {
     port: 3003,
     path: '/duplicati',
     method: 'GET'
-  }; 
+  };
   http.request(options, (innerRes) => {
     let data = [];
     const headerDate = innerRes.headers && innerRes.headers.date ? innerRes.headers.date : 'no response date';
@@ -230,7 +248,7 @@ app.get('/ttt', (req, res) => {
 // https://stackoverflow.com/questions/62976160/how-can-i-send-put-request-to-backend-through-ejs-template-without-using-form
 
 
-app.get('/all_dbs', async (req, res) => { 
+app.get('/all_dbs', async (req, res) => {
   couch.auth(process.env.COUCHDB_USER, process.env.COUCHDB_PASSWORD, (err, body, headers) => {
     if (err) {
       res.send('Error authenticating with CouchDB: ', err.message);
@@ -247,7 +265,7 @@ app.get('/all_dbs', async (req, res) => {
       });
     }
   });
-  
+
   /*
   // USING HTTP module (less secure for credentials)
   const credentials = Buffer.from(process.env.COUCHDB_USER + ":" + process.env.COUCHDB_PASSWORD).toString('base64');
@@ -259,7 +277,7 @@ app.get('/all_dbs', async (req, res) => {
     headers: {
       'Authorization': `Basic ${credentials}`
     }
-  }; 
+  };
   http.request(options, (innerRes) => {
     let data = [];
     const headerDate = innerRes.headers && innerRes.headers.date ? innerRes.headers.date : 'no response date';
@@ -296,7 +314,7 @@ app.get('/provaaa', (req, res) => {
       port: 3003,
       path: '/provaaa',
       method: 'GET'
-    }; 
+    };
     http.request(options, (innerRes) => {
       let data = [];
       const headerDate = innerRes.headers && innerRes.headers.date ? innerRes.headers.date : 'no response date';
