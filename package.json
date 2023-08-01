@@ -1,9 +1,9 @@
 {
-  "name": "accountability",
+  "name": "accounting",
   "version": "1.0.0",
-  "description": "Docker with Nginx and Express.",
+  "description": "Docker with Nginx, Express, CouchDB and Flask.",
   "author": "Lorenzo <lollo.diaspro@gmail.com>",
-  "homepage": "https://github.com/robertoachar/docker-nginx-express#readme",
+  "homepage": "https://github.com/Loenus/accounting#readme",
   "keywords": [
     "docker",
     "docker-compose",
